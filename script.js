@@ -27,8 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             description: 'Phụ kiện hoàn hảo cho phong cách đường phố. Chất liệu vải kaki dày dặn, đứng form. Phía sau có khóa điều chỉnh kim loại chắc chắn, phù hợp với mọi kích cỡ vòng đầu. Logo thêu nổi bật, sắc nét.',
             category: 'phụ kiện'
         },
-        {
-            id: 4,
+        {    id: 4,
             name: 'Áo Sơ Mi Oxford Dài Tay',
             price: 450000,
             image: 'hinhanh4.jpg',
@@ -96,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Thêm biến để lưu thông tin người dùng đang đăng nhập
     let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 
-    // Định nghĩa tài khoản admin (ĐÃ CẬP NHẬT EMAIL)
+    // Định nghĩa tài khoản admin
     const ADMIN_USER = {
         username: 'huynhthithuytrang@gmail.com', 
         password: '29112006',
@@ -132,6 +131,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const productImageInput = document.getElementById('product-image');
     const productDescriptionInput = document.getElementById('product-description');
     const productCategoryInput = document.getElementById('product-category');
+    // THÊM ELEMENT CHO DANH SÁCH QUẢN LÝ
+    const adminProductList = document.getElementById('admin-product-list');
+
+    // Hamburger menu (for responsive)
+    const hamburger = document.querySelector('.hamburger');
+    const navMenu = document.querySelector('.nav-menu');
 
     // --- PAGE NAVIGATION ---
     function showPage(pageId, pushState = true) {
@@ -140,6 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Bạn không có quyền truy cập trang quản trị.');
             showPage('home', false); // Chuyển về trang chủ
             return;
+        }
+
+        // Cập nhật danh sách quản lý khi chuyển đến trang admin dashboard
+        if (pageId === 'admin-dashboard') {
+            renderAdminProducts();
         }
 
         pages.forEach(page => {
@@ -154,6 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
             history.pushState({ page: pageId }, '', `#${pageId}`);
         }
         updateUIForUserRole(); // Cập nhật hiển thị menu sau khi chuyển trang
+        // Ẩn menu hamburger nếu nó đang mở sau khi chuyển trang
+        navMenu.classList.remove('active');
     }
 
     navLinks.forEach(link => {
@@ -174,12 +186,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Toggle hamburger menu
+    hamburger.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
+    });
+
     // --- USER ROLE MANAGEMENT ---
     function updateUIForUserRole() {
         if (currentUser && currentUser.role === 'admin') {
-            adminLink.style.display = 'block'; // Hiển thị nút quản lý
+            // ĐÃ SỬA: Thay đổi cách quản lý hiển thị bằng classList
+            adminLink.classList.add('visible-for-admin'); 
         } else {
-            adminLink.style.display = 'none'; // Ẩn nút quản lý
+            // ĐÃ SỬA: Thay đổi cách quản lý hiển thị bằng classList
+            adminLink.classList.remove('visible-for-admin');
         }
     }
 
@@ -294,6 +313,41 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // HÀM MỚI: Render danh sách sản phẩm trong trang quản lý
+    function renderAdminProducts() {
+        adminProductList.innerHTML = ''; // Xóa nội dung cũ
+        if (products.length === 0) {
+            adminProductList.innerHTML = '<p>Chưa có sản phẩm nào.</p>';
+            return;
+        }
+
+        products.forEach(product => {
+            const productItem = document.createElement('div');
+            productItem.className = 'admin-product-item';
+            productItem.innerHTML = `
+                <img src="${product.image}" alt="${product.name}">
+                <div class="admin-product-item-info">
+                    <h4>${product.name}</h4>
+                    <span>Giá: ${formatCurrency(product.price)} VND</span>
+                    <span>Danh mục: ${product.category}</span>
+                </div>
+                <div class="admin-product-item-actions">
+                    <button class="btn-delete" data-id="${product.id}">Xóa</button>
+                </div>
+            `;
+            adminProductList.appendChild(productItem);
+        });
+
+        // Gán sự kiện cho các nút xóa
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const productId = parseInt(e.target.dataset.id);
+                deleteProduct(productId);
+            });
+        });
+    }
+
 
     // --- CART LOGIC ---
     function addToCart(productId, quantity) {
@@ -458,7 +512,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         alert('Sản phẩm đã được thêm thành công!');
         addProductForm.reset(); // Xóa form
+        renderAdminProducts(); // CẬP NHẬT LẠI DANH SÁCH QUẢN LÝ SAU KHI THÊM
     });
+
+    // HÀM MỚI: Xóa sản phẩm
+    function deleteProduct(productId) {
+        if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?')) {
+            products = products.filter(p => p.id !== productId);
+            saveProducts(); // Lưu thay đổi vào localStorage
+            renderProducts(products, productListContainer); // Cập nhật danh sách sản phẩm chung
+            // Đảm bảo cập nhật sản phẩm nổi bật nếu có
+            renderProducts(products.slice(0, Math.min(products.length, 4)), featuredProductsContainer);
+            renderAdminProducts(); // Cập nhật danh sách quản lý
+            alert('Sản phẩm đã được xóa.');
+        }
+    }
+
 
     function saveProducts() {
         localStorage.setItem('myStoreProducts', JSON.stringify(products));
@@ -475,6 +544,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProducts(products.slice(0, Math.min(products.length, 4)), featuredProductsContainer); 
         renderCart();
         updateUIForUserRole(); // Cập nhật hiển thị menu khi tải trang
+
+        // HIỂN THỊ DANH SÁCH QUẢN LÝ NGAY KHI TRANG ADMIN ĐƯỢC TẢI
+        if (initialPage === 'admin-dashboard') {
+            renderAdminProducts();
+        }
     }
 
     init();
